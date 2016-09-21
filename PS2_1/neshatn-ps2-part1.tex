@@ -1,0 +1,293 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{fancyhdr} % Required for custom headers
+%\usepackage{lastpage} % Required to determine the last page for the footer
+\usepackage{extramarks} % Required for headers and footers
+\usepackage[usenames,dvipsnames]{color} % Required for custom colors
+\usepackage{graphicx} % Required to insert images
+\usepackage{listings} % Required for insertion of code
+\usepackage{courier} % Required for the courier font
+\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+\usepackage{enumerate}
+\usepackage{multicol}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{ulem} % underline emph
+\usepackage{amsmath} % for \text in mathmode
+\usepackage[hypcap]{caption}
+
+% Margins
+\topmargin=-0.45in
+\evensidemargin=0in
+\oddsidemargin=0.5in
+\textwidth=5.5in
+\textheight=9.0in
+\headsep=0.25in
+
+\linespread{1.3} % Line spacing
+
+% Set up the header and footer
+\pagestyle{fancy}
+\lhead{} % Top left header
+\chead{\hmwkClass: \hmwkTitle} % Top center head
+\rhead{\firstxmark} % Top right header
+\lfoot{\lastxmark} % Bottom left footer
+\cfoot{\thepage} % Bottom center footer
+%\rfoot{Page\ \thepage\ of\ \protect\pageref{LastPage}} % Bottom right footer
+\renewcommand\headrulewidth{0.4pt} % Size of the header rule
+\renewcommand\footrulewidth{0.4pt} % Size of the footer rule
+
+\setlength\parindent{0pt} % Removes all indentation from paragraphs
+
+\definecolor{MyDarkGreen}{rgb}{0.0,0.4,0.0} % This is the color used for comments
+\lstloadlanguages{Matlab} % Load C syntax for listings, for a list of other languages supported see: ftp://ftp.tex.ac.uk/tex-archive/macros/latex/contrib/listings/listings.pdf
+\lstset{language=C, % Use python in this example
+        frame=single, % Single frame around code
+        basicstyle=\small\ttfamily, % Use small true type font
+        keywordstyle=[1]\color{Blue}\bf, % C functions bold and blue
+        keywordstyle=[2]\color{Purple}, % C function arguments purple
+        keywordstyle=[3]\color{Blue}, % Custom functions \underbar underlined and blue
+        identifierstyle=, % Nothing special about identifiers                                         
+        commentstyle=\usefont{T1}{pcr}{m}{sl}\color{MyDarkGreen}\small, % Comments small dark green courier font
+        stringstyle=\color{Purple}, % Strings are purple
+        showstringspaces=false, % Don't put marks in string spaces
+        tabsize=5, % 5 spaces per tab
+        %
+        % Put standard Python functions not included in the default language here
+        morekeywords={rand},
+        %
+        % Put Python function parameters here
+        morekeywords=[2]{on, off, interp},
+        %
+        % Put user defined functions here
+        morekeywords=[3]{glutCreateWindow,p},
+        %
+        morecomment=[l][\color{Blue}]{...}, % Line continuation (...) like blue comment
+        numbers=none, % can use none % Line numbers on left
+        firstnumber=1, % Line numbers start with line 1
+        numberstyle=\tiny\color{Blue}, % Line numbers are blue and small
+        stepnumber=1 % Line numbers go in steps of 5
+}
+% \usepackage{graphicx}
+\newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+
+% Creates a new command to include a perl script, the first parameter is the filename of the script (without .pl), the second parameter is the caption
+\newcommand{\code}[1]{
+\begin{itemize}
+\item[]\lstinputlisting[label=#1]{#1.c}
+%\item[]\lstinputlisting[caption=#2,label=#1]{#1.c}
+\end{itemize}
+}
+
+%----------------------------------------------------------------------------------------
+%   DOCUMENT STRUCTURE COMMANDS
+%   Skip this unless you know what you're doing
+%----------------------------------------------------------------------------------------
+
+\setcounter{secnumdepth}{0} % Removes default section numbers
+
+\newcommand{\homeworkProblemName}{}
+\newenvironment{homeworkProblem}[1]{ % Makes a new environment called homeworkProblem which takes 1 argument (custom name) but the default is "Problem #"
+    \renewcommand{\homeworkProblemName}{#1} % Assign \homeworkProblemName the name of the problem
+    \section{\homeworkProblemName} % Make a section in the document with the custom problem count
+}
+
+\newcommand{\problemAnswer}[1]{ % Defines the problem answer command with the content as the only argument
+    \noindent\framebox[\columnwidth][c]{\begin{minipage}{0.98\columnwidth}#1\end{minipage}} % Makes the box around the problem answer and puts the content inside
+}
+
+\newcommand{\homeworkSectionName}{}
+\newenvironment{homeworkSection}[1]{ % New environment for sections within homework problems, takes 1 argument - the name of the section
+    \renewcommand{\homeworkSectionName}{#1} % Assign \homeworkSectionName to the name of the section from the environment argument
+    \subsection{\homeworkSectionName} % Make a subsection with the custom name of the subsection
+}
+
+%----------------------------------------------------------------------------------------
+%   NAME AND CLASS SECTION
+%----------------------------------------------------------------------------------------
+
+\newcommand{\hmwkTitle}{Problem set 2, Part 1,\\ Theory} % Assignment title
+\newcommand{\hmwkDueDate}{\date{September 19, 2016}} % Due date
+\newcommand{\hmwkClass}{TDT4200} % Course/class
+\newcommand{\hmwkAuthorName}{Neshat\ Naderi}  % Your name
+
+
+%----------------------------------------------------------------------------------------
+%   TITLE PAGE
+%----------------------------------------------------------------------------------------
+
+\title{
+\vspace{2in}
+\textmd{\textbf{\hmwkClass:\ \hmwkTitle}}\\
+\normalsize\vspace{0.1in}\normalsize{\hmwkDueDate}
+\vspace{0.1in}\large{\text{Parallel Computing}}
+\vspace{3in}
+}
+
+\author{\textbf{\hmwkAuthorName}}
+\date{} % Insert date here if you want it to appear below your name
+
+%----------------------------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+\setcounter{tocdepth}{1} % Uncomment this line if you don't want subsections listed in the ToC
+
+% \newpage
+% \tableofcontents
+%\newpage
+
+%----------------------------------------------------------------------------------------
+%   PROBLEM 1
+%----------------------------------------------------------------------------------------
+
+% To have just one problem per page, simply put a \clearpage after each problem
+\clearpage
+
+\begin{homeworkProblem}{}
+\begin{homeworkSection}{Problem 1}
+
+\begin{flushleft}
+a) Total elements ditributed and gathered, assumming one of nodes is master node and does not need communication with itself. \\ $$\underline{\underline{Elements = \frac{n^2}{p}(p-1)}} $$
+\end{flushleft}
+
+\begin{flushleft}
+b) Grid elements sent in periodic boarder exchange\\
+$$\underline{\underline{Elements = 2(\frac{n}{r} + \frac{n}{q})}} $$
+\end{flushleft}
+
+\begin{flushleft}
+c) If $n$ is total number of elements to be sent(calculated in b), $T_s = s$ is latency(time taking to start transmition and recieving data) and $\beta$ is size of each element in Bytes then communication time $T_{comm}$ is defined as 
+$$ T_{comm} = T_s + \beta n  $$
+$$ \underline{\underline{T(q, r) = s + 2(\frac{n}{r} + \frac{n}{q})\cdot \frac{d}{b}}}$$
+\end{flushleft}
+\begin{flushleft}
+d) $q=r=8$ \\
+% $ \frac{dT(p)}{dt} = 0 $
+\end{flushleft}
+
+\end{homeworkSection}
+
+% \newpage
+
+\begin{homeworkSection}{Problem 2}
+If odd-even sort is applied when $n=p$ the communication overhead would be much higher than a compare-swap operation, so parallizing would be nonsense. According to \textit{Pachebo} it is assumed that $n/p > 1$. Here $n$ is the number of elements in a list that is evenly divisable by $p$, and $p$ is the number of processes.  
+\begin{flushleft}
+a) Speedup and efficiency. \\
+$$S(n, p) = \frac{T_{serial}}{T_{parallel} },$$\\
+$$E(n, p) = \frac{S(n, p)}{p} = \frac{T_{serial}}{p \cdot T_{parallel} }$$
+
+In this case the serial program runs in $T_s$ and parallel runtime is $T_p$ 
+$$T_s = n^2$$ 
+$$T_p = p\cdot \frac{n}{p} + (\frac{n}{p})^2= n +  (\frac{n}{p})^2$$
+\newpage
+By this we get speedup and efficiency as below
+
+$$ \underline{\underline{s(n, p) = \frac{n^2}{n+ (\frac{n}{p})^2}=\frac{n}{1+\frac{n}{p^2}}}} $$
+$$ \underline{\underline{E(n,p) = \frac{n^2}{np +\frac{n^2}{p}}=\frac{n}{p+\frac{n}{p}}}}$$
+
+Setting up a table for a different values for $n$ and $p$
+\begin{table}[h!]
+\centering
+\caption{Efficiency calculated with some values for $n$ and $p$}
+\label{eff}
+\begin{tabular}{|l|l|l|}
+\hline
+$n$ & $p$ & $E(n,p)$ \\ \hline
+64  & 4   & 3.2      \\ \hline
+128 & 4   & 3.6      \\ \hline
+128 & 8   & 5.3      \\ \hline
+128 & 16   & 5.3      \\ \hline
+256 & 4   & 3.8      \\ \hline
+256 & 8   & 6.4      \\ \hline
+512 & 16  & 10.7     \\ \hline
+\end{tabular}
+\end{table}
+\end{flushleft}
+\begin{flushleft}
+b) Linear speedup? To achieve linear speedup, efficiency must be equal $1.0$. Since speedup expression above shows $S(n, p) \not= p$ and then the program does not obtain linear efficiency.
+\end{flushleft}
+To see if the problem is scalable, we increase the $p$ by factor of $k$ and problem size $n$ by $x$ factor. So number of processes are $kp$ and problem size is $xn$. In our case $$E = \frac{xn}{kp + \frac{xn}{kp}}$$ 
+\begin{flushleft}
+
+c) Weakly scalable? No, because the efficiency does not stay constant as the problem size increases at the same rate as proceses. Also when $x=k$.
+If we increase the problem size to $2n$ and processes to $2p$ according to table \ref{eff}, we don't obtain constant efficiency.
+Therefor not weakly scalable.
+\end{flushleft}
+
+\begin{flushleft}
+d) Strongly Scalable? Yes, because efficiency stays almost constant if only problem size increases(Table \ref{eff}).
+For example if we increase $p$ with factor of $2$ and keep problem size $128$, the efficiency stays constant.
+\end{flushleft}
+
+\end{homeworkSection}
+\newpage
+\begin{homeworkSection}{Problem 3}
+\textbf{Process} is heavy-weight. Memory blocks are private and memory blocks are allocated for stack and heap. Descriptor of resources, process state information and security informations are stored in a process. 
+\textbf{Thread} is lighter-weight than a process. It shares memory resources and mostly all process specific things, except stacks and program counters. 
+
+\end{homeworkSection}
+
+\begin{homeworkSection}{Problem 4}
+By using private variables, performance of the serial critical section is improved. The partial sum is added to global sum only once. Moving busy-wait flag outside the loop avoids threads to alternate between waiting and executing. Incrementing and waiting increase the runtime when busy-wait flag is inside the loop.
+\end{homeworkSection}
+
+\begin{homeworkSection}{Problem 5}
+
+\begin{flushleft}
+a) \textbf{Race condition} happens when threads or processes try to access resources at the same time. A resource, for example memory area can be assigned only to one thread/process at the time. Therefore, there is a competition for accessing the resource before other threads/processes.
+\end{flushleft}
+
+\begin{flushleft}
+b) \textbf{Critical section} is a block of code that could be executed by only one thread at the time. Often when a thread enters such a critical section, it blocks until it finishes executing that section.
+\end{flushleft}
+
+\begin{flushleft}
+c) Schemes for protection access to critical sections:
+\begin{enumerate}
+  \item \textbf{Mutual exclusion lock}(mutex) is basiclly a lock that protects a critical section. When a thread enters a critical section, it calls the mutex function to lock. When it finishes the execution it calls the unlock function. So that other threads could start execution. In this case the critical section is serial because a mutex does not allow more than one thread to execute the code at a time.\\
+  \textbf{pros}:
+    \begin{enumerate}
+      \item Critical section is owned/locked by a thread until the execution is done.
+      \item Guarantees that one thread excludes all other threads in a critical section. So the chance of collisions is rare.
+      \item Better performance than busy-waiting when the number of threads increas.
+      \end{enumerate}
+  \textbf{cons}: 
+      \begin{enumerate}
+      \item The order of what thread enters critical section is random. It creates problems in uncommutative operations like matrix multiplication.
+      \item All other threads must wait until the owner has unlocked. For example, if the thread which owns the lock enters an infinite loop, other threads never execute the critical section and they wait forever.
+      \end{enumerate}
+  \item \textbf{Busy-waiting} is another alternative to protect a critical section. It is often very unefficient because in busy-waiting a thread enters a loop and wait for a condition. So the thread could stuck in the loop and waste the system resources by testing a condition continously. \\
+  \textbf{pros}:
+    \begin{enumerate}
+      \item Only one thread can enter the critical section. Thus resulting correctly. 
+      \item It is simple and threads execute a critical section in order.
+      \end{enumerate}
+  \textbf{cons}: 
+      \begin{enumerate}
+      \item Computer optimizing can affect correctness of busy-waiting reseults. Because compiler do not know the program is multithreaded. Turning off computer optimizer degrades performance.
+      \item It wasts CPU resources.
+      \end{enumerate}
+  \item \textbf{Semaphores} are similar to mutexes but they are more powerfull. In semaphores threads do not own the critical section. Semaphores are a type of thread synchronization. \\
+  \textbf{pros}:
+    \begin{enumerate}
+      \item Threads are synchronized and they execute by order.(Produser-consumer synchronization)
+      \item No waste of CPU ressurser due to busy-waiting.
+    \end{enumerate}
+
+  \textbf{cons}: 
+    \begin{enumerate}
+      \item Threads must moniter other threads' updates.
+      \item Correctness of program cannot be verified easily.
+      \end{enumerate}
+
+\end{enumerate}
+\end{flushleft}
+
+\end{homeworkSection}
+
+\end{homeworkProblem}
+
+
+
+\end{document}
