@@ -93,8 +93,10 @@ MPI_Comm cart;
 
 // MPI datatypes for gather/scater/border exchange
 MPI_Datatype
-    border_row, border_col;
-    
+    border_row, border_col, local_grid, global_grid, temp_type;
+MPI_Status status;
+
+
 /* Indexing functions, returns linear index for x and y coordinates, compensating for the border */
 
 // temperature
@@ -124,44 +126,115 @@ int inside(int x, int y){
     y < local_origin[1] + local_grid_size[1];
 }
 
-
-
-
 void ftcs_solver( int step ){
-    /* TODO: Implement ftcs solver */
-}
 
+    for(int x = 0; x < local_grid_size[0]; x++){
+        for(int y = 0; y < local_grid_size[1]; y++){
+            float* old_temp = local_temp[(step)%2];
+            float* new_temp = local_temp[(step+1)%2];
+
+            new_temp[lti(x,y)] = old_temp[lti(x,y)] + local_material[lmi(x,y)]*
+                           (old_temp[lti(x+1,y)] +
+                           old_temp[lti(x-1,y)] +
+                           old_temp[lti(x,y+1)] +
+                           old_temp[lti(x,y-1)] -
+                           4*old_temp[lti(x,y)]);
+        }
+    }
+    //printf("FTCS-DONE-->   \n");
+
+}
 
 void commit_vector_types ( void ){
-    /* TODO: Create and commit the types for the border exchange and collecting the subdomains */
-}
 
+    MPI_Type_vector(local_grid_size[1],1,local_grid_size[0]+2*BORDER,MPI_FLOAT, &border_col);
+    MPI_Type_commit(&border_col);
+
+    MPI_Type_vector(1,local_grid_size[0],0,MPI_FLOAT, &border_row);
+    MPI_Type_commit(&border_row);
+
+    MPI_Type_vector(local_grid_size[1],local_grid_size[0], local_grid_size[0]+2*BORDER, MPI_FLOAT, &temp_type);
+    MPI_Type_commit(&temp_type);
+
+    MPI_Type_vector(local_grid_size[1], local_grid_size[0], local_grid_size[0], MPI_FLOAT, &local_grid);
+    MPI_Type_commit(&local_grid);
+
+    MPI_Type_vector(local_grid_size[1], local_grid_size[0],GRID_SIZE[0], MPI_FLOAT, &global_grid);
+    MPI_Type_commit(&global_grid);
+}
 
 void border_exchange ( int step ){
-    /* TODO: Implement the border exchange */
-}
 
+    MPI_Sendrecv(&local_temp[step%2][lti(0, 0)], 1, border_col, west, 0,
+        &local_temp[step%2][lti(-BORDER, 0)], 1, border_col, west, 0, cart, &status);
+
+    MPI_Sendrecv(&local_temp[step%2][lti(local_grid_size[0]-1, 0)], 1, border_col, east, 0,
+        &local_temp[step%2][lti(local_grid_size[0], 0)], 1, border_col, east, 0, cart, &status);
+
+    MPI_Sendrecv(&local_temp[step%2][lti(0, 0)], 1, border_row, north, 0,
+        &local_temp[step%2][lti(0, -BORDER)], 1, border_row, north, 0, cart, &status);
+
+    MPI_Sendrecv(&local_temp[step%2][lti(0, local_grid_size[1]-1)], 1, border_row, south, 0,
+        &local_temp[step%2][lti(0, local_grid_size[1])], 1, border_row, south, 0, cart, &status);
+}
 
 void gather_temp( int step){
-    /* TODO: Collect all the local subdomains in the temperature array at rank 0 */
+
+    MPI_Request request;
+    int coord[2];
+
+    MPI_Isend(&local_temp[(step+1)%2][lti(0, 0)], 1, temp_type, 0, 0, cart, &request);
+    if(rank == 0) {
+        for (int i = 0; i < size; i++) {
+            MPI_Cart_coords(cart, i, 2, coord);
+            MPI_Recv(&temperature[ti(coord[0]*local_grid_size[0], coord[1]*local_grid_size[1])], 1, global_grid, i, 0, cart, &status);
+        }
+    }
+    MPI_Wait(&request, MPI_STATUS_IGNORE);
 }
+
 
 
 void scatter_temp(){
-    /* TODO: Distribute the temperature array at rank 0 to all other ranks */
+    
+    MPI_Request request;
+    int coord[2];
+
+    MPI_Irecv(&local_temp[0][lti(0,0)], 1, temp_type, 0, 0, cart, &request);
+    if(rank == 0) {
+        for (int i = 0; i < size; i++) {
+            MPI_Cart_coords(cart, i, 2, coord);
+            MPI_Send(&temperature[ti(coord[0]*local_grid_size[0], coord[1]*local_grid_size[1])], 1, global_grid, i, 0, cart);
+        }
+    }
+    MPI_Wait(&request, MPI_STATUS_IGNORE);
+    printf("send-temp-DONE-%d  \n", rank );
 }
 
 
 void scatter_material(){
-    /* TODO: Distribute the material array at rank 0 to all other ranks */
-}
     
+    MPI_Request request;
+    int coord[2];
+
+    MPI_Irecv(&local_material[lmi(0,0)], 1, local_grid, 0, 0, cart, &request);
+    if(rank == 0) {
+        for (int i = 0; i < size; i++) {
+            MPI_Cart_coords(cart, i, 2, coord);
+            MPI_Isend(&material[mi(coord[0]*local_grid_size[0], coord[1]*local_grid_size[1])], 1, global_grid, i, 0, cart, &request);
+            printf("send-mat-> %d\n", i );
+        }
+    }
+    MPI_Wait(&request, MPI_STATUS_IGNORE);
+}
 
 int main ( int argc, char **argv ){
+
+
     MPI_Init ( &argc, &argv );
     MPI_Comm_size ( MPI_COMM_WORLD, &size );
     MPI_Comm_rank ( MPI_COMM_WORLD, &rank );
-    
+
     MPI_Dims_create( size, 2, dims );
     MPI_Cart_create( MPI_COMM_WORLD, 2, dims, periods, 0, &cart );
     MPI_Cart_coords( cart, rank, 2, coords );
@@ -169,50 +242,60 @@ int main ( int argc, char **argv ){
     MPI_Cart_shift( cart, 1, 1, &north, &south );
     MPI_Cart_shift( cart, 0, 1, &west, &east );
 
+    // size without boarder
     local_grid_size[0] = GRID_SIZE[0] / dims[0];
     local_grid_size[1] = GRID_SIZE[1] / dims[1];
     local_origin[0] = coords[0]*local_grid_size[0];
     local_origin[1] = coords[1]*local_grid_size[1];
-    
+
     commit_vector_types ();
-    
+
     if(rank == 0){
         size_t temperature_size = GRID_SIZE[0]*GRID_SIZE[1];
         temperature = calloc(temperature_size, sizeof(float));
-        size_t material_size = (GRID_SIZE[0]+2*(BORDER-1))*(GRID_SIZE[1]+2*(BORDER-1)); 
+        size_t material_size = (GRID_SIZE[0]+2*(BORDER-1))*(GRID_SIZE[1]+2*(BORDER-1));
         material = calloc(material_size, sizeof(float));
-        
+
         init_temp_material();
     }
-    
+
     size_t lsize_borders = (local_grid_size[0]+2*BORDER)*(local_grid_size[1]+2*BORDER);
     size_t lsize = (local_grid_size[0]+2*(BORDER-1))*(local_grid_size[1]+2*(BORDER-1));
-    local_material = calloc( lsize , sizeof(float) );
-    local_temp[0] = calloc( lsize_borders , sizeof(float) );
-    local_temp[1] = calloc( lsize_borders , sizeof(float) );
-    
+    local_material = calloc( lsize , sizeof(float) ); // uten border
+    local_temp[0] = calloc( lsize_borders , sizeof(float) ); // med border
+    local_temp[1] = calloc( lsize_borders , sizeof(float) ); // med border
+
     init_local_temp();
-    
+
     scatter_material();
+    // print_local_temps(0);
+
     scatter_temp();
-    
+    // print_local_temps(0);
+
     // Main integration loop: NSTEPS iterations, impose external heat
     for( int step=0; step<NSTEPS; step += 1 ){
         if( step < CUTOFF ){
             external_heat ( step );
         }
+
         border_exchange( step );
+
         ftcs_solver( step );
 
         if((step % SNAPSHOT) == 0){
             gather_temp ( step );
+
+
             if(rank == 0){
                 write_temp(step);
+
             }
+
         }
     }
-    
-    if(rank == 0){
+
+  if(rank == 0){
         free (temperature);
         free (material);
     }
@@ -221,6 +304,7 @@ int main ( int argc, char **argv ){
     free (local_temp[1]);
 
     MPI_Finalize();
+
     exit ( EXIT_SUCCESS );
 }
 
@@ -236,9 +320,9 @@ void external_heat( int step ){
     }
 }
 
-
+// Local
 void init_local_temp(void){
-    
+
     for(int x=- BORDER; x<local_grid_size[0] + BORDER; x++ ){
         for(int y= - BORDER; y<local_grid_size[1] + BORDER; y++ ){
             local_temp[1][lti(x,y)] = 10.0;
@@ -247,21 +331,22 @@ void init_local_temp(void){
     }
 }
 
+// Global
 void init_temp_material(){
-    
+
     for(int x = -(BORDER-1); x < GRID_SIZE[0] + (BORDER-1); x++){
         for(int y = -(BORDER-1); y < GRID_SIZE[1] +(BORDER-1); y++){
             material[mi(x,y)] = MERCURY * (dt/h*h);
         }
     }
-    
+
     for(int x = 0; x < GRID_SIZE[0]; x++){
         for(int y = 0; y < GRID_SIZE[1]; y++){
             temperature[ti(x,y)] = 20.0;
             material[mi(x,y)] = MERCURY * (dt/h*h);
         }
     }
-    
+
     /* Set up the two blocks of copper and tin */
     for(int x=(5*GRID_SIZE[0]/8); x<(7*GRID_SIZE[0]/8); x++ ){
         for(int y=(GRID_SIZE[1]/8); y<(3*GRID_SIZE[1]/8); y++ ){
@@ -269,10 +354,10 @@ void init_temp_material(){
             temperature[ti(x,y)] = 60.0;
         }
     }
-    
+
     for(int x=(GRID_SIZE[0]/8); x<(GRID_SIZE[0]/2)-(GRID_SIZE[0]/8); x++ ){
         for(int y=(5*GRID_SIZE[1]/8); y<(7*GRID_SIZE[1]/8); y++ ){
-            
+
             material[mi(x,y)] = TIN * (dt/(h*h));
             temperature[ti(x,y)] = 60.0;
         }
@@ -288,18 +373,18 @@ void init_temp_material(){
 }
 
 void print_local_temps(int step){
-    
+
     MPI_Barrier(cart);
     for(int i = 0; i < size; i++){
         if(rank == i){
-            printf("Rank %d step %d\n", i, step);
+            // printf("Rank %d step %d\n", i, step);
             for(int y = -BORDER; y < local_grid_size[1] + BORDER; y++){
                 for(int x = -BORDER; x < local_grid_size[0] + BORDER; x++){
-                    printf("%5.1f ", local_temp[step%2][lti(x,y)]);
+                    // printf("%5.1f ", local_temp[step%2][lti(x,y)]);
                 }
-                printf("\n");
+                // printf("\n");
             }
-            printf ("\n");
+            // printf ("\n");
         }
         fflush(stdout);
         MPI_Barrier(cart);
@@ -310,7 +395,7 @@ void print_local_temps(int step){
 void savebmp(char *name, unsigned char *buffer, int x, int y) {
   FILE *f = fopen(name, "wb");
   if (!f) {
-    printf("Error writing image to disk.\n");
+    // printf("Error writing image to disk.\n");
     return;
   }
   unsigned int size = x * y * 3 + 54;
@@ -330,7 +415,7 @@ void savebmp(char *name, unsigned char *buffer, int x, int y) {
 /* Given iteration number, set a colour */
 void fancycolour(unsigned char *p, float temp) {
     float r = (temp/101) * 255;
-    
+
     if(temp <= 25){
         p[2] = 0;
         p[1] = (unsigned char)((temp/25)*255);
@@ -342,7 +427,7 @@ void fancycolour(unsigned char *p, float temp) {
         p[0] = 255 - (unsigned char)(((temp-25)/25) * 255);
     }
     else if (temp <= 75){
-        
+
         p[2] = (unsigned char)(255* (temp-50)/25);
         p[1] = 255;
         p[0] = 0;
