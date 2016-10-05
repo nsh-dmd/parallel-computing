@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <omp.h>
 #include <pthread.h>
 
 
 /* Functions to be implemented: */
-void ftcs_solver ( int step );
-void external_heat ( int step );
+void* ftcs_solver ( void* step );
+void* external_heat ( void* step );
 
 /* Prototypes for functions found at the end of this file */
 void write_temp ( int step );
@@ -73,8 +72,11 @@ const float
     
 int n_threads = 1;
 
-
-
+/*  thread argument struct */
+typedef struct{
+    int thread_id;
+    int step;
+} thread_data;
 
 /* Indexing functions, returns linear index for x and y coordinates, compensating for the border */
 
@@ -90,29 +92,58 @@ int mi(int x, int y){
 
 
 
-void ftcs_solver( int step ){
-    for(int x = 0; x < GRID_SIZE[0]; x++){
+
+void* ftcs_solver( void* step ) {
+    
+    thread_data* thread_args = (thread_data*) step;
+
+    int local_x = GRID_SIZE[0] / n_threads;
+    int start = local_x * thread_args->thread_id;
+    int end = local_x * (thread_args->thread_id + 1);
+
+    if(thread_args->thread_id == n_threads) {
+        end += GRID_SIZE[0] % n_threads;
+}
+
+    for(int x = start; x < end; x++){
         for(int y = 0; y < GRID_SIZE[1]; y++){
-            float* in = temperature[(step)%2];
-            float* out = temperature[(step+1)%2];
-            
+            float* in = temperature[(thread_args->step)%2];
+            float* out = temperature[(thread_args->step+1)%2];
+            // if ( thread_args->thread_id != 10){
             out[ti(x,y)] = in[ti(x,y)] + material[mi(x,y)]*
                            (in[ti(x+1,y)] + 
                            in[ti(x-1,y)] + 
                            in[ti(x,y+1)] + 
                            in[ti(x,y-1)] -
                            4*in[ti(x,y)]);
+            // }
         }
     }
+	
+    pthread_exit(NULL);
 }
 
-void external_heat( int step ){
-    for(int x=(GRID_SIZE[0]/4); x<=(3*GRID_SIZE[0]/4); x++){
-        for(int y=(GRID_SIZE[1]/2)-(GRID_SIZE[1]/16); y<=(GRID_SIZE[1]/2)+(GRID_SIZE[1]/16); y++){
-            temperature[step%2][ti(x,y)] = 100.0;
+void* external_heat( void* step ){
+    
+    thread_data* thread_args = (thread_data*) step;
 
+    int reminder = (3 * (GRID_SIZE[0]/4) - GRID_SIZE[0]/4) % n_threads;
+    int local_x = (3 * (GRID_SIZE[0]/4) - GRID_SIZE[0]/4) / n_threads ;
+
+    int start = local_x * thread_args->thread_id + GRID_SIZE[0]/4;
+    int end = local_x * (thread_args->thread_id+1) + GRID_SIZE[0]/4;
+
+    if(thread_args->thread_id == n_threads) {
+	   end += reminder;
+    }
+
+    for(int x=start; x<end; x++){
+        for(int y=(GRID_SIZE[1]/2)-(GRID_SIZE[1]/16); y<=(GRID_SIZE[1]/2)+(GRID_SIZE[1]/16); y++){
+            temperature[thread_args->step%2][ti(x,y)] = 100.0;
         }
     }
+
+    pthread_exit(NULL);
 }
 
 
@@ -125,6 +156,9 @@ int main ( int argc, char **argv ){
         exit(-1);
     }
     n_threads = atoi(argv[1]);
+
+    pthread_t threads[n_threads];
+    thread_data* args[n_threads];
         
     size_t temperature_size =(GRID_SIZE[0]+2*(BORDER))*(GRID_SIZE[1]+2*(BORDER));
     temperature[0] = calloc(temperature_size, sizeof(float));
@@ -137,20 +171,46 @@ int main ( int argc, char **argv ){
         
         // Main integration loop: NSTEPS iterations, impose external heat
     for( int step=0; step<NSTEPS; step += 1 ){
-        if( step < CUTOFF ){
-            external_heat ( step );
-        }
-        ftcs_solver( step );
-            
-        if((step % SNAPSHOT) == 0){
-            write_temp(step);
-        }
+
+        /* Launching threads */
+        
+            // printf("thread -> %d\n", t);
+
+            if( step < CUTOFF ){
+                for (int t = 0; t < n_threads; ++t) {
+                    args[t] = malloc( sizeof(thread_data) );
+                    args[t]->thread_id = t;
+                    args[t]->step = step;
+                    pthread_create( &threads[t], NULL, external_heat, (void*)args[t] );   
+                }
+                /* Joining threads */
+                for (int t = 0; t < n_threads; ++t) {
+                    pthread_join( threads[t], NULL);
+                }
+            }
+            for (int t = 0; t < n_threads; ++t) {
+                    args[t] = malloc( sizeof(thread_data) );
+                    args[t]->thread_id = t;
+                    args[t]->step = step;
+                    pthread_create( &threads[t], NULL, ftcs_solver, (void*)args[t] );
+                }
+            /* Joining threads */
+            for (int t = 0; t < n_threads; ++t) {
+                pthread_join( threads[t], NULL);
+            }
+                
+            if((step % SNAPSHOT) == 0){
+                write_temp(step);
+            }
+        
     }
+
+    pthread_exit(NULL);
         
     free (temperature[0]);
     free (temperature[1]);
     free (material);
-        
+
     exit ( EXIT_SUCCESS );
 }
 

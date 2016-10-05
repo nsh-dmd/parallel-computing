@@ -91,6 +91,8 @@ int mi(int x, int y){
 
 
 void ftcs_solver( int step ){
+
+    # pragma omp parallel for schedule(guided)
     for(int x = 0; x < GRID_SIZE[0]; x++){
         for(int y = 0; y < GRID_SIZE[1]; y++){
             float* in = temperature[(step)%2];
@@ -107,6 +109,8 @@ void ftcs_solver( int step ){
 }
 
 void external_heat( int step ){
+
+    #pragma omp parallel for schedule(guided)
     for(int x=(GRID_SIZE[0]/4); x<=(3*GRID_SIZE[0]/4); x++){
         for(int y=(GRID_SIZE[1]/2)-(GRID_SIZE[1]/16); y<=(GRID_SIZE[1]/2)+(GRID_SIZE[1]/16); y++){
             temperature[step%2][ti(x,y)] = 100.0;
@@ -158,12 +162,12 @@ int main ( int argc, char **argv ){
 
 
 void init_temp_material(){
-    
+
     for(int x = -(BORDER); x < GRID_SIZE[0] + (BORDER); x++){
         for(int y = -(BORDER); y < GRID_SIZE[1] +(BORDER); y++){
             temperature[0][ti(x,y)] = 10.0;
              temperature[1][ti(x,y)] = 10.0;
-
+ 
         }
     }
     
@@ -181,7 +185,7 @@ void init_temp_material(){
             temperature[0][ti(x,y)] = 60.0;
         }
     }
-    
+
     for(int x=(GRID_SIZE[0]/8); x<(GRID_SIZE[0]/2)-(GRID_SIZE[0]/8); x++ ){
         for(int y=(5*GRID_SIZE[1]/8); y<(7*GRID_SIZE[1]/8); y++ ){
             
